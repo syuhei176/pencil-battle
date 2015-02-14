@@ -200,7 +200,7 @@
 					score : score
 				});
 				if(self.check_reserved_block()) {
-					self.falling_frame(0);
+					self.falling_frame(0, score);
 				}else{
 					if(self.create_puyo()) {
 						self.refresh_svg();
