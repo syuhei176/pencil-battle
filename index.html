@@ -6,6 +6,7 @@
 </head>
 <body>
 <script src="http://cdn.mlkcca.com/v0.2.8/milkcocoa.js"></script>
+<script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
 <script src="vue.min.js"></script>
 <script src="snap.svg-min.js"></script>
 <script>
@@ -26,6 +27,13 @@
         'into Facebook.';
     }
   }
+
+  $(function() {
+    $("#logout-btn").click(function() {
+      FB.logout(function(response) {
+      });
+    });
+  });
 
   function checkLoginState() {
     FB.getLoginStatus(function(response) {
@@ -103,8 +111,8 @@
 </fb:login-button>
 <div id="status"></div>
 <svg id="svg" width="320" height="640"></svg>
+<button id="logout-btn">ログアウト</button>
 <script src="pencil.js"></script>
-
 </body>
 </html>
 
