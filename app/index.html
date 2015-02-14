@@ -1,125 +1,124 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Facebook Login JavaScript Example</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+<title>milkcocoaで作ったゲーム！</title>
 <meta charset="UTF-8">
 </head>
 <body>
 <script src="http://cdn.mlkcca.com/v0.2.8/milkcocoa.js"></script>
+<script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
 <script src="vue.min.js"></script>
 <script src="snap.svg-min.js"></script>
 <script>
-  // This is called with the results from from FB.getLoginStatus().
-  function statusChangeCallback(response) {
-    console.log(response);
-    if (response.status === 'connected') {
-      // Logged into your app and Facebook.
-      testAPI();
-    } else if (response.status === 'not_authorized') {
-      // The person is logged into Facebook, but not your app.
-      document.getElementById('status').innerHTML = 'Please log ' +
-        'into this app.';
-    } else {
-      // The person is not logged into Facebook, so we're not sure if
-      // they are logged into this app or not.
-      document.getElementById('status').innerHTML = 'Please log ' +
-        'into Facebook.';
-    }
+$(function() {
+  var user_test = window.localStorage.getItem("user");
+  if(user_test) {
+    var user = JSON.parse(user_test);
+    $("#username").val(user.name);
+    var milkcocoa = new MilkCocoa("https://io-qi64ippx7.mlkcca.com:443/");
+    var gametitle = window.encodeURI(location.hash.substr(1) || "root");
+    var ds = milkcocoa.dataStore(gametitle);
+    ds.child("gameover_event").query().done(function(docs) {
+      var users = {};
+      docs.forEach(function(doc) {
+        if(!users.hasOwnProperty(doc.user_id)) users[doc.user_id] = {count : 0, name : doc.name, score : 0};
+        users[doc.user_id].count++;
+        if(users[doc.user_id].score < doc.score) users[doc.user_id].score = doc.score;
+      });
+      for(var key in users)
+        $("#users").append("<div>"+users[key].name + "、スコア：" + users[key].score + "、ゲームオーバー:" + users[key].count+"</div>");
+    });
+    $("#startBtn").click(function() {
+        $("#startBtn").remove();
+        start_game(user, ds);
+    });
+  }else{
+    var user = {
+      id : new Date().getTime().toString(36) + Math.floor((Math.random() * 1000)),
+      name : "名無し"
+    };
+    window.localStorage.setItem("user", JSON.stringify(user));
   }
-
-  function checkLoginState() {
-    FB.getLoginStatus(function(response) {
-      statusChangeCallback(response);
-    });
-  }
-
-  window.fbAsyncInit = function() {
-    FB.init({
-      appId      : '525538124256022',
-      cookie     : true,  // enable cookies to allow the server to access 
-                          // the session
-      xfbml      : true,  // parse social plugins on this page
-      version    : 'v2.1' // use version 2.1
-    });
-    console.log("FB.getLoginStatus");
-    FB.getLoginStatus(function(response) {
-      statusChangeCallback(response);
-    });
-  };
-
-  // Load the SDK asynchronously
-  (function(d, s, id) {
-    var js, fjs = d.getElementsByTagName(s)[0];
-    if (d.getElementById(id)) return;
-    js = d.createElement(s); js.id = id;
-    js.src = "//connect.facebook.net/en_US/sdk.js";
-    fjs.parentNode.insertBefore(js, fjs);
-  }(document, 'script', 'facebook-jssdk'));
-
-  // Here we run a very simple test of the Graph API after login is
-  // successful.  See statusChangeCallback() for when this call is made.
-  function testAPI() {
-    console.log('Welcome!  Fetching your information.... ');
-    FB.api('/me', function(response) {
-      console.log(response.id);
-      var milkcocoa = new MilkCocoa("https://io-qi64ippx7.mlkcca.com:443/");
-      var gametitle = window.encodeURI(location.hash.substr(1) || "root");
-      var ds = milkcocoa.dataStore(gametitle);
+  $("#username").change(function(e) {
+    user.name = $("#username").val();
+    window.localStorage.setItem("user", JSON.stringify(user));
+  });
+});
+  function start_game(user, ds) {
+    var score = 0;
       var main = new Main();
-      main.init(response.id, response.name);
+      main.init(user.id, user.name);
       main.create_random_map();
       main.create_svg();
       main.falling_frame();
-      main.on("chain", function(chain) {
+      ds.send({
+        type : "start",
+        user_id : user.id,
+        name : user.name
+      });
+      main.on("chain", function(e) {
+        var chain = e.chain;
+        console.log(e.score);
+        score += e.score;
+        $("#score").html("スコア："+score);
+        if(chain >= 2) {
+          ds.child("chain_event").push({
+            type : "chain",
+            chain : chain,
+            score : e.score,
+            user_id : user.id,
+            name : user.name
+          });
+          ds.send({
+            type : "chain",
+            chain : chain,
+            user_id : user.id,
+            name : user.name
+          });
+        }
+      });
+      main.on("gameover", function() {
+        ds.child("gameover_event").push({
+          user_id : user.id,
+          name : user.name,
+          score : score
+        });
         ds.send({
-          chain : chain,
-          user_id : response.id,
-          name : response.name
-        })
+          type : "gameover",
+          user_id : user.id,
+          name : user.name
+        });
       });
       ds.on("send", function(e) {
-        console.log(e.value);
-        if(e.value.user_id != response.id) {
-          main.create_text(e.value.name+"が"+e.value.chain+"連鎖してきた！");
-          main.create_random_puyo_reserved(e.value.chain);
-        }else{
-          main.create_text("連鎖攻撃成功！");
+        if(e.value.type == "start") {
+            main.create_text(e.value.name+"が参戦してきた！");
+        }else if(e.value.type == "chain") {
+          if(e.value.user_id != user.id) {
+            main.create_text(e.value.name+"が"+e.value.chain+"連鎖してきた！");
+            main.create_random_puyo_reserved(e.value.chain-1);
+          }else{
+            main.create_text("連鎖攻撃成功！");
+          }
+        }else if(e.value.type == "gameover") {
+            main.create_text(e.value.name+"がゲームオーバー");
         }
       })
 
       document.getElementById('status').innerHTML =
-        'Thanks for logging in, ' + response.name + '!';
-    });
+        'Thanks for logging in, ' + user.name + '!';
   }
 </script>
 
-<!--
-  Below we include the Login Button social plugin. This button uses
-  the JavaScript SDK to present a graphical Login button that triggers
-  the FB.login() function when clicked.
--->
-
-<fb:login-button scope="public_profile,email" onlogin="checkLoginState();">
-</fb:login-button>
 <div id="status"></div>
+<div id="score"></div>
+<button id="startBtn">スタート！！</button>
+<div>名前：<input id="username" type="text" /></div>
 <svg id="svg" width="320" height="640"></svg>
+<div>ユーザリスト</div>
+<div id="users"></div>
 <script src="pencil.js"></script>
-
 </body>
 </html>
-
-<script>
-  (function(d, s, id){
-     var js, fjs = d.getElementsByTagName(s)[0];
-     if (d.getElementById(id)) {return;}
-     js = d.createElement(s); js.id = id;
-     js.src = "//connect.facebook.net/en_US/sdk.js";
-     fjs.parentNode.insertBefore(js, fjs);
-   }(document, 'script', 'facebook-jssdk'));
-</script>
-<div
-  class="fb-like"
-  data-share="true"
-  data-width="450"
-  data-show-faces="true">
-</div>

@@ -21,7 +21,7 @@
 	var PURPLE = 5;
 	var BLOCK = 6;
 	var WIDTH = 6;
-	var HEIGHT = 10;
+	var HEIGHT = 11;
 
 	function Main() {
 		this.phase = Main.PHASE_MAIN;
@@ -30,12 +30,14 @@
 		this.cursor = {
 			map : [],
 			elems : [],
+			active : true,
 			x : 0,
 			y : 0,
 			r : 0
 		}
 		this.callbacks = {
-			"chain" : null
+			"chain" : null,
+			"gameover" : null
 		}
 		this.reserved = [];
 	}
@@ -52,8 +54,8 @@
 	}
 
 	Main.prototype.create_random_map = function() {
-		for(var i=WIDTH*8;i < WIDTH*HEIGHT;i++) {
-			this.map[i] = ( Math.floor(Math.random() * 100) % 5) + 1;
+		for(var i=WIDTH*9;i < WIDTH*HEIGHT;i++) {
+			this.map[i] = ( Math.floor(Math.random() * 100) % 6) + 1;
  		}
 	}
 
@@ -65,10 +67,15 @@
 		if(b) {
 			if(b == 1) {
 				this.set_map(Math.floor(Math.random() * 100) % 6, 0, ( Math.floor(Math.random() * 100) % 6) + 1);
+			}else if(b == 2) {
+				for(var i=0;i < WIDTH;i++) {
+					this.set_map(i, 0, ( Math.floor(Math.random() * 100) % 6) + 1);
+				}
 			}else{
 				for(var i=0;i < WIDTH;i++) {
 					this.set_map(i, 0, ( Math.floor(Math.random() * 100) % 6) + 1);
 				}
+				this.set_map(Math.floor(Math.random() * 100) % 6, 1, ( Math.floor(Math.random() * 100) % 6) + 1);
 			}
 			return true;
 		}
@@ -83,11 +90,12 @@
 		this.cursor.x = 2;
 		this.cursor.y = 0;
 		this.cursor.r = 0;
+		this.cursor.active = true;
 		return true;
 	}
 
 	Main.prototype.get_map = function(x, y) {
-		if(x < 0 || y < 0 || x >= WIDTH || y >= HEIGHT) return EMPTY;
+		if(x < 0 || y < 0 || x >= WIDTH || y >= HEIGHT) return BLOCK;
 		return this.map[x + y * WIDTH];
 	}
 
@@ -99,13 +107,13 @@
 	Main.prototype.check_coll = function(x, y, r) {
 		var self = this;
 		if(r == 0)
-			return y + 1 >= HEIGHT || self.get_map(x, y + 1) != EMPTY;
+			return self.get_map(x, y + 1) != EMPTY || self.get_map(x, y) != EMPTY;
 		if(r == 1)
-			return y >= HEIGHT || self.get_map(x-1, self.cursor.y) != EMPTY || self.get_map(x, y) != EMPTY;
+			return self.get_map(x - 1, y) != EMPTY || self.get_map(x, y) != EMPTY;
 		if(r == 2)
-			return y >= HEIGHT || self.get_map(x, y) != EMPTY;
+			return self.get_map(x, y - 1) != EMPTY || self.get_map(x, y) != EMPTY;
 		if(r == 3)
-			return y >= HEIGHT || self.get_map(x+1, y) != EMPTY || self.get_map(x, y) != EMPTY;
+			return self.get_map(x + 1, y) != EMPTY || self.get_map(x, y) != EMPTY;
 	}
 
 	Main.prototype.paste_cursor = function() {
@@ -159,39 +167,50 @@
 			}, 800);
 		}else{
 			self.paste_cursor();
-			self.falling_frame(0);
+			self.cursor.active = false;
+			self.falling_frame(0, 0);
 		}
 	}
 
-	Main.prototype.falling_frame = function(chain) {
+	Main.prototype.falling_frame = function(chain, score) {
 		var self = this;
 		self.falling_down(function() {
 			self.refresh_svg();
-			vanish_frame(chain);
+			vanish_frame(chain, score);
 		});
-		function vanish_frame(chain) {
+		function vanish_frame(chain, score) {
 			var flg = false;
+			var count = 0;
 			for(var y=0;y < HEIGHT;y++) {
 				for(var x=0;x < WIDTH;x++) {
-					if(self.cal(x, y)) flg = true;
+					var c = self.cal(x, y)
+					if(c > 0) flg = true;
+					count += c;
 				}
 			}
 			self.refresh_svg();
 			if(flg) {
 				setTimeout(function() {
-					self.falling_frame(chain + 1);
+					self.falling_frame(chain + 1, score + count * (chain + 1));
 				}, 800);
 			}else{
 				console.log(chain + "連鎖");
-				if(chain > 0) self.callbacks["chain"](chain);
+				if(chain > 0) self.callbacks["chain"]({
+					chain : chain,
+					score : score
+				});
 				if(self.check_reserved_block()) {
-					self.falling_frame(0);
+					self.falling_frame(0, score);
 				}else{
 					if(self.create_puyo()) {
 						self.refresh_svg();
 						self.main_frame();
 					}else{
-						alert("Game Over");
+						self.create_text("Game Over");
+						self.callbacks["gameover"]();
+						setTimeout(function() {
+							location.reload();
+						}, 1000);
 					}
 				}
 			}
@@ -230,17 +249,22 @@
 		var map2 = [];
 		var list = [];
 		for(var i=0;i < WIDTH*HEIGHT;i++) map2[i] = 0;
+		if(this.map[x + y * WIDTH] == BLOCK) return 0;
 		var c = cal2(x, y, this.map[x + y * WIDTH]);
 		if(c >= 4) {
 			list.forEach(function(t) {
-				self.map[t.x + t.y * WIDTH] = 0;
+				self.map[t.x + t.y * WIDTH] = EMPTY;
+				if(self.get_map(t.x + 1, t.y) == BLOCK) self.set_map(t.x + 1, t.y, EMPTY);
+				if(self.get_map(t.x - 1, t.y) == BLOCK) self.set_map(t.x - 1, t.y, EMPTY);
+				if(self.get_map(t.x, t.y + 1) == BLOCK) self.set_map(t.x, t.y + 1, EMPTY);
+				if(self.get_map(t.x, t.y - 1) == BLOCK) self.set_map(t.x, t.y - 1, EMPTY);
 			});
-			return true;
+			return c;
 		}
-		return false;
+		return 0;
 		function cal2(x, y, color) {
 			if(x < 0 || y < 0 || x >= WIDTH || y >= HEIGHT) return 0;
-			if(self.map[x + y * WIDTH] == BLOCK || self.map[x + y * WIDTH] == EMPTY) return 0;
+			if(self.map[x + y * WIDTH] == EMPTY) return 0;
 			if(map2[x + y * WIDTH] == 1) return 0;
 			map2[x + y * WIDTH] = 1;
 			if(self.map[x + y * WIDTH] != color) return 0;
@@ -264,6 +288,7 @@
 		    fill: get_color(this.cursor.map[0]),
 		    stroke: "#000",
 		    strokeWidth: 5,
+		    "fill-opacity" : this.cursor.active ? 1 : 0,
 			cx : this.cursor.x*60+30,
 			cy : this.cursor.y*60+30
 		});
@@ -273,6 +298,7 @@
 		    fill: get_color(this.cursor.map[1]),
 		    stroke: "#000",
 		    strokeWidth: 5,
+		    "fill-opacity" : this.cursor.active ? 1 : 0,
 			cx : (this.cursor.x + cxx[this.cursor.r])*60+30,
 			cy : (this.cursor.y + cyy[this.cursor.r])*60+30
 		});
@@ -296,6 +322,8 @@
 	}
 	Main.prototype.create_control = function(s) {
 		var self = this;
+		var rightArrow = s.polyline([240, 400, 350, 450, 240, 500]);
+		var leftArrow = s.polyline([120, 400, 0, 450, 120, 500]);
 		var leftBtn		= s.rect(0,		400, 120, 100, 10, 10);
 		var rBtn		= s.rect(120,	400, 120, 100, 10, 10);
 		var rightBtn	= s.rect(240,	400, 120, 100, 10, 10);
@@ -317,13 +345,25 @@
 		    stroke: "#000",
 		    strokeWidth: 2,
 		});
-		leftBtn.mousedown(function() {
+		rightArrow.attr({
+		    fill: "#305030",
+		    "fill-opacity" : 0.5,
+		    stroke: "#000",
+		    strokeWidth: 2,
+		});
+		leftArrow.attr({
+		    fill: "#305030",
+		    "fill-opacity" : 0.5,
+		    stroke: "#000",
+		    strokeWidth: 2,
+		});
+		leftBtn.click(function() {
 			self.move_left();
 		});
-		rBtn.mousedown(function() {
+		rBtn.click(function() {
 			self.rotate();
 		});
-		rightBtn.mousedown(function() {
+		rightBtn.click(function() {
 			self.move_right();
 		});
 	}
@@ -349,7 +389,7 @@
 		var tm = window.innerWidth / 320;
 		svgElement.setAttribute("width", window.innerWidth-30);
 		svgElement.setAttribute("height", window.innerHeight-30);
-		svgElement.setAttribute("viewBox", "0 0 320 640");
+		svgElement.setAttribute("viewBox", "0 0 320 700");
 		var s = Snap(svgElement);
 		this.snap = s;
 		for(var y=0;y < HEIGHT;y++) {
