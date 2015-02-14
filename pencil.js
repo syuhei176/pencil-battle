@@ -30,12 +30,14 @@
 		this.cursor = {
 			map : [],
 			elems : [],
+			active : true,
 			x : 0,
 			y : 0,
 			r : 0
 		}
 		this.callbacks = {
-			"chain" : null
+			"chain" : null,
+			"gameover" : null
 		}
 		this.reserved = [];
 	}
@@ -65,10 +67,15 @@
 		if(b) {
 			if(b == 1) {
 				this.set_map(Math.floor(Math.random() * 100) % 6, 0, ( Math.floor(Math.random() * 100) % 6) + 1);
+			}else if(b == 2) {
+				for(var i=0;i < WIDTH;i++) {
+					this.set_map(i, 0, ( Math.floor(Math.random() * 100) % 6) + 1);
+				}
 			}else{
 				for(var i=0;i < WIDTH;i++) {
 					this.set_map(i, 0, ( Math.floor(Math.random() * 100) % 6) + 1);
 				}
+				this.set_map(Math.floor(Math.random() * 100) % 6, 1, ( Math.floor(Math.random() * 100) % 6) + 1);
 			}
 			return true;
 		}
@@ -83,11 +90,12 @@
 		this.cursor.x = 2;
 		this.cursor.y = 0;
 		this.cursor.r = 0;
+		this.cursor.active = true;
 		return true;
 	}
 
 	Main.prototype.get_map = function(x, y) {
-		if(x < 0 || y < 0 || x >= WIDTH || y >= HEIGHT) return EMPTY;
+		if(x < 0 || y < 0 || x >= WIDTH || y >= HEIGHT) return BLOCK;
 		return this.map[x + y * WIDTH];
 	}
 
@@ -99,13 +107,13 @@
 	Main.prototype.check_coll = function(x, y, r) {
 		var self = this;
 		if(r == 0)
-			return y + 1 >= HEIGHT || self.get_map(x, y + 1) != EMPTY;
+			return self.get_map(x, y + 1) != EMPTY || self.get_map(x, y) != EMPTY;
 		if(r == 1)
-			return y >= HEIGHT || self.get_map(x-1, self.cursor.y) != EMPTY || self.get_map(x, y) != EMPTY;
+			return self.get_map(x - 1, y) != EMPTY || self.get_map(x, y) != EMPTY;
 		if(r == 2)
-			return y >= HEIGHT || self.get_map(x, y) != EMPTY;
+			return self.get_map(x, y - 1) != EMPTY || self.get_map(x, y) != EMPTY;
 		if(r == 3)
-			return y >= HEIGHT || self.get_map(x+1, y) != EMPTY || self.get_map(x, y) != EMPTY;
+			return self.get_map(x + 1, y) != EMPTY || self.get_map(x, y) != EMPTY;
 	}
 
 	Main.prototype.paste_cursor = function() {
@@ -159,31 +167,38 @@
 			}, 800);
 		}else{
 			self.paste_cursor();
-			self.falling_frame(0);
+			self.cursor.active = false;
+			self.falling_frame(0, 0);
 		}
 	}
 
-	Main.prototype.falling_frame = function(chain) {
+	Main.prototype.falling_frame = function(chain, score) {
 		var self = this;
 		self.falling_down(function() {
 			self.refresh_svg();
-			vanish_frame(chain);
+			vanish_frame(chain, score);
 		});
-		function vanish_frame(chain) {
+		function vanish_frame(chain, score) {
 			var flg = false;
+			var count = 0;
 			for(var y=0;y < HEIGHT;y++) {
 				for(var x=0;x < WIDTH;x++) {
-					if(self.cal(x, y)) flg = true;
+					var c = self.cal(x, y)
+					if(c > 0) flg = true;
+					count += c;
 				}
 			}
 			self.refresh_svg();
 			if(flg) {
 				setTimeout(function() {
-					self.falling_frame(chain + 1);
+					self.falling_frame(chain + 1, score + count * (chain + 1));
 				}, 800);
 			}else{
 				console.log(chain + "連鎖");
-				if(chain > 0) self.callbacks["chain"](chain);
+				if(chain > 0) self.callbacks["chain"]({
+					chain : chain,
+					score : score
+				});
 				if(self.check_reserved_block()) {
 					self.falling_frame(0);
 				}else{
@@ -192,6 +207,10 @@
 						self.main_frame();
 					}else{
 						self.create_text("Game Over");
+						self.callbacks["gameover"]();
+						setTimeout(function() {
+							location.reload();
+						}, 1000);
 					}
 				}
 			}
@@ -235,9 +254,9 @@
 			list.forEach(function(t) {
 				self.map[t.x + t.y * WIDTH] = 0;
 			});
-			return true;
+			return c;
 		}
-		return false;
+		return 0;
 		function cal2(x, y, color) {
 			if(x < 0 || y < 0 || x >= WIDTH || y >= HEIGHT) return 0;
 			if(self.map[x + y * WIDTH] == BLOCK || self.map[x + y * WIDTH] == EMPTY) return 0;
@@ -264,6 +283,7 @@
 		    fill: get_color(this.cursor.map[0]),
 		    stroke: "#000",
 		    strokeWidth: 5,
+		    "fill-opacity" : this.cursor.active ? 1 : 0,
 			cx : this.cursor.x*60+30,
 			cy : this.cursor.y*60+30
 		});
@@ -273,6 +293,7 @@
 		    fill: get_color(this.cursor.map[1]),
 		    stroke: "#000",
 		    strokeWidth: 5,
+		    "fill-opacity" : this.cursor.active ? 1 : 0,
 			cx : (this.cursor.x + cxx[this.cursor.r])*60+30,
 			cy : (this.cursor.y + cyy[this.cursor.r])*60+30
 		});
@@ -317,13 +338,13 @@
 		    stroke: "#000",
 		    strokeWidth: 2,
 		});
-		leftBtn.mousedown(function() {
+		leftBtn.click(function() {
 			self.move_left();
 		});
-		rBtn.mousedown(function() {
+		rBtn.click(function() {
 			self.rotate();
 		});
-		rightBtn.mousedown(function() {
+		rightBtn.click(function() {
 			self.move_right();
 		});
 	}
