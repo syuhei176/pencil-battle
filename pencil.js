@@ -75,7 +75,7 @@
 		var b = this.reserved.shift();
 		if(b) {
 			if(b == 1) {
-				this.set_map(6, 0, ( Math.floor(Math.random() * 100) % 6) + 1);
+				this.set_map(( Math.floor(Math.random() * 100) % WIDTH), 0, 6);
 			}else if(b == 2) {
 				for(var i=0;i < WIDTH;i++) {
 					this.set_map(i, 0, ( Math.floor(Math.random() * 100) % 6) + 1);
@@ -84,7 +84,7 @@
 				for(var i=0;i < WIDTH;i++) {
 					this.set_map(i, 0, ( Math.floor(Math.random() * 100) % 6) + 1);
 				}
-				this.set_map(6, 1, ( Math.floor(Math.random() * 100) % 6) + 1);
+				this.set_map(( Math.floor(Math.random() * 100) % WIDTH), 1, 6);
 			}
 			return true;
 		}
