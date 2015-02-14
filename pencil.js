@@ -60,13 +60,22 @@
 	}
 
 	Main.prototype.create_random_puyo_reserved = function(amount) {
-		this.reserved.push(amount);
+		if(amount <= 2) {
+			this.reserved.push(amount);
+		}else if(amount <= 4){
+			this.reserved.push(2);
+			this.reserved.push(amount-2);
+		}else{
+			this.reserved.push(2);
+			this.reserved.push(2);
+			this.reserved.push(amount-4);
+		}
 	}
 	Main.prototype.check_reserved_block = function() {
 		var b = this.reserved.shift();
 		if(b) {
 			if(b == 1) {
-				this.set_map(Math.floor(Math.random() * 100) % 6, 0, ( Math.floor(Math.random() * 100) % 6) + 1);
+				this.set_map(6, 0, ( Math.floor(Math.random() * 100) % 6) + 1);
 			}else if(b == 2) {
 				for(var i=0;i < WIDTH;i++) {
 					this.set_map(i, 0, ( Math.floor(Math.random() * 100) % 6) + 1);
@@ -75,7 +84,7 @@
 				for(var i=0;i < WIDTH;i++) {
 					this.set_map(i, 0, ( Math.floor(Math.random() * 100) % 6) + 1);
 				}
-				this.set_map(Math.floor(Math.random() * 100) % 6, 1, ( Math.floor(Math.random() * 100) % 6) + 1);
+				this.set_map(6, 1, ( Math.floor(Math.random() * 100) % 6) + 1);
 			}
 			return true;
 		}
@@ -191,7 +200,7 @@
 			self.refresh_svg();
 			if(flg) {
 				setTimeout(function() {
-					self.falling_frame(chain + 1, score + count * (chain + 1));
+					self.falling_frame(chain + 1, score + count * ((chain+1) * (chain+1)));
 				}, 800);
 			}else{
 				console.log(chain + "連鎖");
