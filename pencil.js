@@ -54,8 +54,8 @@
 	}
 
 	Main.prototype.create_random_map = function() {
-		for(var i=WIDTH*8;i < WIDTH*HEIGHT;i++) {
-			this.map[i] = ( Math.floor(Math.random() * 100) % 5) + 1;
+		for(var i=WIDTH*9;i < WIDTH*HEIGHT;i++) {
+			this.map[i] = ( Math.floor(Math.random() * 100) % 6) + 1;
  		}
 	}
 
@@ -253,7 +253,11 @@
 		var c = cal2(x, y, this.map[x + y * WIDTH]);
 		if(c >= 4) {
 			list.forEach(function(t) {
-				self.map[t.x + t.y * WIDTH] = 0;
+				self.map[t.x + t.y * WIDTH] = EMPTY;
+				if(self.get_map(t.x + 1, t.y) == BLOCK) self.set_map(t.x + 1, t.y, EMPTY);
+				if(self.get_map(t.x - 1, t.y) == BLOCK) self.set_map(t.x - 1, t.y, EMPTY);
+				if(self.get_map(t.x, t.y + 1) == BLOCK) self.set_map(t.x, t.y + 1, EMPTY);
+				if(self.get_map(t.x, t.y - 1) == BLOCK) self.set_map(t.x, t.y - 1, EMPTY);
 			});
 			return c;
 		}
@@ -263,7 +267,7 @@
 			if(self.map[x + y * WIDTH] == EMPTY) return 0;
 			if(map2[x + y * WIDTH] == 1) return 0;
 			map2[x + y * WIDTH] = 1;
-			if(self.map[x + y * WIDTH] != BLOCK && self.map[x + y * WIDTH] != color) return 0;
+			if(self.map[x + y * WIDTH] != color) return 0;
 			list.push({x : x, y : y});
 			return cal2(x + 1, y, color) + cal2(x - 1, y, color) + cal2(x, y + 1, color) + cal2(x, y - 1, color) + 1;
 		}
