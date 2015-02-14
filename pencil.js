@@ -21,7 +21,7 @@
 	var PURPLE = 5;
 	var BLOCK = 6;
 	var WIDTH = 6;
-	var HEIGHT = 10;
+	var HEIGHT = 11;
 
 	function Main() {
 		this.phase = Main.PHASE_MAIN;
@@ -259,10 +259,10 @@
 		return 0;
 		function cal2(x, y, color) {
 			if(x < 0 || y < 0 || x >= WIDTH || y >= HEIGHT) return 0;
-			if(self.map[x + y * WIDTH] == BLOCK || self.map[x + y * WIDTH] == EMPTY) return 0;
+			if(self.map[x + y * WIDTH] == EMPTY) return 0;
 			if(map2[x + y * WIDTH] == 1) return 0;
 			map2[x + y * WIDTH] = 1;
-			if(self.map[x + y * WIDTH] != color) return 0;
+			if(self.map[x + y * WIDTH] != BLOCK && self.map[x + y * WIDTH] != color) return 0;
 			list.push({x : x, y : y});
 			return cal2(x + 1, y, color) + cal2(x - 1, y, color) + cal2(x, y + 1, color) + cal2(x, y - 1, color) + 1;
 		}
@@ -317,6 +317,8 @@
 	}
 	Main.prototype.create_control = function(s) {
 		var self = this;
+		var rightArrow = s.polyline([240, 400, 350, 450, 240, 500]);
+		var leftArrow = s.polyline([120, 400, 0, 450, 120, 500]);
 		var leftBtn		= s.rect(0,		400, 120, 100, 10, 10);
 		var rBtn		= s.rect(120,	400, 120, 100, 10, 10);
 		var rightBtn	= s.rect(240,	400, 120, 100, 10, 10);
@@ -334,6 +336,18 @@
 		});
 		rightBtn.attr({
 		    fill: "#707070",
+		    "fill-opacity" : 0.5,
+		    stroke: "#000",
+		    strokeWidth: 2,
+		});
+		rightArrow.attr({
+		    fill: "#305030",
+		    "fill-opacity" : 0.5,
+		    stroke: "#000",
+		    strokeWidth: 2,
+		});
+		leftArrow.attr({
+		    fill: "#305030",
 		    "fill-opacity" : 0.5,
 		    stroke: "#000",
 		    strokeWidth: 2,
@@ -370,7 +384,7 @@
 		var tm = window.innerWidth / 320;
 		svgElement.setAttribute("width", window.innerWidth-30);
 		svgElement.setAttribute("height", window.innerHeight-30);
-		svgElement.setAttribute("viewBox", "0 0 320 640");
+		svgElement.setAttribute("viewBox", "0 0 320 700");
 		var s = Snap(svgElement);
 		this.snap = s;
 		for(var y=0;y < HEIGHT;y++) {
