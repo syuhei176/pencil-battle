@@ -249,6 +249,7 @@
 		var map2 = [];
 		var list = [];
 		for(var i=0;i < WIDTH*HEIGHT;i++) map2[i] = 0;
+		if(this.map[x + y * WIDTH] == BLOCK) return 0;
 		var c = cal2(x, y, this.map[x + y * WIDTH]);
 		if(c >= 4) {
 			list.forEach(function(t) {
