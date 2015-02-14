@@ -191,7 +191,7 @@
 						self.refresh_svg();
 						self.main_frame();
 					}else{
-						alert("Game Over");
+						self.create_text("Game Over");
 					}
 				}
 			}
