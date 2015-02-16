@@ -97,7 +97,7 @@
 		this.cursor.map[0] = ( Math.floor(Math.random() * 100) % 5) + 1;
 		this.cursor.map[1] = ( Math.floor(Math.random() * 100) % 5) + 1;
 		this.cursor.x = 2;
-		this.cursor.y = 0;
+		this.cursor.y = -1;
 		this.cursor.r = 0;
 		this.cursor.active = true;
 		return true;
@@ -156,6 +156,13 @@
 			self.refresh_svg();
 		}
 	}
+	Main.prototype.move_down = function() {
+		var self = this;
+		if(!self.check_coll(self.cursor.x, self.cursor.y+1, self.cursor.r)) {
+			self.cursor.y++;
+			self.refresh_svg();
+		}
+	}
 	Main.prototype.rotate = function() {
 		var self = this;
 		var next_r = self.cursor.r;
@@ -164,6 +171,13 @@
 		if(!self.check_coll(self.cursor.x, self.cursor.y, next_r)) {
 			self.cursor.r = next_r;
 			self.refresh_svg();
+		}else{
+			next_r++;
+			if(next_r >= 4) next_r = 0;
+			if(!self.check_coll(self.cursor.x, self.cursor.y, next_r)) {
+				self.cursor.r = next_r;
+				self.refresh_svg();
+			}
 		}
 	}
 	Main.prototype.main_frame = function() {
@@ -333,38 +347,52 @@
 		var self = this;
 		var rightArrow = s.polyline([240, 400, 350, 450, 240, 500]);
 		var leftArrow = s.polyline([120, 400, 0, 450, 120, 500]);
+		var downArrow = s.polyline([120, 500, 180, 600, 240, 500]);
 		var leftBtn		= s.rect(0,		400, 120, 100, 10, 10);
 		var rBtn		= s.rect(120,	400, 120, 100, 10, 10);
 		var rightBtn	= s.rect(240,	400, 120, 100, 10, 10);
+		var downBtn		= s.rect(120,	500, 120, 100, 10, 10);
 		leftBtn.attr({
 		    fill: "#707070",
-		    "fill-opacity" : 0.5,
+		    "fill-opacity" : 0.3,
 		    stroke: "#000",
 		    strokeWidth: 2,
 		});
 		rBtn.attr({
 		    fill: "#707070",
-		    "fill-opacity" : 0.5,
+		    "fill-opacity" : 0.3,
 		    stroke: "#000",
 		    strokeWidth: 2,
 		});
 		rightBtn.attr({
 		    fill: "#707070",
-		    "fill-opacity" : 0.5,
+		    "fill-opacity" : 0.3,
+		    stroke: "#000",
+		    strokeWidth: 2,
+		});
+		downBtn.attr({
+		    fill: "#707070",
+		    "fill-opacity" : 0.3,
 		    stroke: "#000",
 		    strokeWidth: 2,
 		});
 		rightArrow.attr({
 		    fill: "#305030",
-		    "fill-opacity" : 0.5,
+		    "fill-opacity" : 0.3,
 		    stroke: "#000",
-		    strokeWidth: 2,
+		    strokeWidth: 3,
 		});
 		leftArrow.attr({
 		    fill: "#305030",
-		    "fill-opacity" : 0.5,
+		    "fill-opacity" : 0.3,
 		    stroke: "#000",
-		    strokeWidth: 2,
+		    strokeWidth: 3,
+		});
+		downArrow.attr({
+		    fill: "#305030",
+		    "fill-opacity" : 0.3,
+		    stroke: "#000",
+		    strokeWidth: 3,
 		});
 		leftBtn.click(function() {
 			self.move_left();
@@ -375,6 +403,10 @@
 		rightBtn.click(function() {
 			self.move_right();
 		});
+		downBtn.click(function() {
+			self.move_down();
+		});
+
 	}
 	Main.prototype.create_text = function(text) {
 		var rect = this.snap.rect(20, 250, 320, 100, 10, 10);
