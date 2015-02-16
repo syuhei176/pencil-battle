@@ -15,12 +15,13 @@
 <script>
 $(function() {
   var user_test = window.localStorage.getItem("user");
+  var user = {};
+  var milkcocoa = new MilkCocoa("https://io-qi64ippx7.mlkcca.com:443/");
+  var gametitle = window.encodeURI(location.hash.substr(1) || "root");
+  var ds = milkcocoa.dataStore(gametitle);
   if(user_test) {
-    var user = JSON.parse(user_test);
+    user = JSON.parse(user_test);
     $("#username").val(user.name);
-    var milkcocoa = new MilkCocoa("https://io-qi64ippx7.mlkcca.com:443/");
-    var gametitle = window.encodeURI(location.hash.substr(1) || "root");
-    var ds = milkcocoa.dataStore(gametitle);
     ds.child("gameover_event").query().done(function(docs) {
       var users = {};
       docs.forEach(function(doc) {
@@ -31,12 +32,8 @@ $(function() {
       for(var key in users)
         $("#users").append("<div>"+users[key].name + "、スコア：" + users[key].score + "、ゲームオーバー:" + users[key].count+"</div>");
     });
-    $("#startBtn").click(function() {
-        $("#menu").remove();
-        start_game(user, ds);
-    });
   }else{
-    var user = {
+    user = {
       id : new Date().getTime().toString(36) + Math.floor((Math.random() * 1000)),
       name : "名無し"
     };
@@ -45,6 +42,10 @@ $(function() {
   $("#username").change(function(e) {
     user.name = $("#username").val();
     window.localStorage.setItem("user", JSON.stringify(user));
+  });
+  $("#startBtn").click(function() {
+      $("#menu").remove();
+      start_game(user, ds);
   });
 });
   function start_game(user, ds) {
